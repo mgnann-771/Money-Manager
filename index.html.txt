@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ငွေကြေးစီမံခန့်ခွဲမှုစနစ် (Smart Budget & Income Tracker)</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'Noto Sans Myanmar', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Google Fonts: Noto Sans Myanmar & Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Myanmar:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', 'Noto Sans Myanmar', sans-serif;
+      line-height: 1.7;
+    }
+    .glass-card {
+      backdrop-filter: blur(12px);
+    }
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    .dark ::-webkit-scrollbar-thumb {
+      background: #334155;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+    .dark ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+    /* Modal Animation */
+    @keyframes modalSlideIn {
+      from {
+        opacity: 0;
+        transform: translateY(12px) scale(0.98);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+    .animate-modal {
+      animation: modalSlideIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+  </style>
+  <script>
+    // Apply saved theme immediately to prevent flash
+    if (localStorage.getItem('mm_budget_theme') === 'dark' ||
+        (!('mm_budget_theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  </script>
+</head>
+<body class="min-h-screen pb-14 bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-300 selection:bg-emerald-500 selection:text-white">
+
+  <!-- Top Navigation Bar (Single Consolidated Action Bar) -->
+  <header class="sticky top-0 z-30 bg-white/85 dark:bg-slate-900/85 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800/80 transition-colors">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-2">
+      <!-- App Logo & Title -->
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white shadow-md shadow-emerald-500/20 shrink-0">
+          <i data-lucide="wallet" class="w-5 h-5"></i>
+        </div>
+        <div class="min-w-0">
+          <h1 class="font-bold text-sm sm:text-lg text-slate-900 dark:text-white leading-tight truncate">ငွေစာရင်းနှင့် ခွဲဝေမှုစနစ်</h1>
+          <p class="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:block">Smart Income & Budget Allocator</p>
+        </div>
+      </div>
+
+      <!-- Right-side Consolidated Action Icons -->
+      <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        <!-- 1. Quick Split Calculator & Entry Button -->
+        <button type="button" onclick="openEntryModal('income')"
+          class="inline-flex items-center gap-1.5 px-2.5 sm:px-3.5 py-2 text-xs sm:text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 active:scale-95 rounded-xl shadow-sm shadow-emerald-600/20 transition cursor-pointer"
+          title="စာရင်းသွင်း & ခွဲဝေတွက်ချက်ရန်">
+          <i data-lucide="plus" class="w-4 h-4"></i>
+          <span class="hidden md:inline">စာရင်းသွင်း & တွက်ချက်</span>
+          <span class="hidden sm:inline md:hidden">စာရင်းသွင်း</span>
+        </button>
+
+        <!-- 2. Transaction History Button with Badge -->
+        <button type="button" onclick="openHistoryModal()"
+          class="relative inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 active:scale-95 rounded-xl transition cursor-pointer"
+          title="မှတ်တမ်းများကြည့်ရန်">
+          <i data-lucide="history" class="w-4 h-4"></i>
+          <span class="hidden sm:inline">မှတ်တမ်းများ</span>
+          <span id="historyBadgeCount" class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold rounded-full bg-emerald-600 text-white">0</span>
+        </button>
+
+        <!-- 3. Settings Button -->
+        <button type="button" onclick="openSettingsModal()"
+          class="inline-flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 active:scale-95 rounded-xl transition cursor-pointer"
+          title="ရာခိုင်နှုန်းချိန်ညှိရန်">
+          <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
+          <span class="hidden lg:inline">ချိန်ညှိရန်</span>
+        </button>
+
+        <!-- 4. Dark / Light Mode Toggle -->
+        <button type="button" onclick="toggleTheme()" id="themeToggleBtn"
+          class="p-2 text-slate-700 dark:text-amber-300 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 active:scale-95 rounded-xl transition cursor-pointer"
+          title="Dark / Light Mode ပြောင်းရန်">
+          <i id="themeIconSun" data-lucide="sun" class="w-4 h-4 hidden dark:block"></i>
+          <i id="themeIconMoon" data-lucide="moon" class="w-4 h-4 block dark:hidden"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Clean Dashboard Body -->
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 space-y-8">
+
+    <!-- 3 Overview Summary Cards -->
+    <section class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5">
+      <!-- Total Balance -->
+      <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 dark:from-emerald-950 dark:via-slate-900 dark:to-slate-900 border border-slate-800 dark:border-emerald-800/40 p-6 text-white shadow-lg">
+        <div class="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-emerald-500/20 blur-xl"></div>
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-medium text-slate-300">စုစုပေါင်း လက်ကျန်ငွေ</span>
+          <div class="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center text-emerald-400">
+            <i data-lucide="landmark" class="w-5 h-5"></i>
+          </div>
+        </div>
+        <div id="totalBalanceDisplay" class="text-2xl sm:text-3xl font-bold tracking-tight mb-1">0 ကျပ်</div>
+        <p class="text-xs text-slate-400">ကဏ္ဍအားလုံးရှိ လက်ရှိကျန်ငွေစုစုပေါင်း</p>
+      </div>
+
+      <!-- Total Income -->
+      <div class="glass-card rounded-2xl p-6 bg-white/95 dark:bg-slate-900/95 border border-slate-200/80 dark:border-slate-800 shadow-sm">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-medium text-slate-500 dark:text-slate-400">စုစုပေါင်း ဝင်ငွေ</span>
+          <div class="w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-950/70 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+            <i data-lucide="arrow-down-left" class="w-5 h-5"></i>
+          </div>
+        </div>
+        <div id="totalIncomeDisplay" class="text-2xl sm:text-3xl font-bold text-emerald-600 dark:text-emerald-400 tracking-tight mb-1">0 ကျပ်</div>
+        <p class="text-xs text-slate-400 dark:text-slate-500">မှတ်တမ်းတင်ထားသော ဝင်ငွေအားလုံး</p>
+      </div>
+
+      <!-- Total Expense -->
+      <div class="glass-card rounded-2xl p-6 bg-white/95 dark:bg-slate-900/95 border border-slate-200/80 dark:border-slate-800 shadow-sm">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-medium text-slate-500 dark:text-slate-400">စုစုပေါင်း အသုံးစရိတ်</span>
+          <div class="w-9 h-9 rounded-lg bg-rose-50 dark:bg-rose-950/70 flex items-center justify-center text-rose-600 dark:text-rose-400">
+            <i data-lucide="arrow-up-right" class="w-5 h-5"></i>
+          </div>
+        </div>
+        <div id="totalExpenseDisplay" class="text-2xl sm:text-3xl font-bold text-rose-600 dark:text-rose-400 tracking-tight mb-1">0 ကျပ်</div>
+        <p class="text-xs text-slate-400 dark:text-slate-500">ကဏ္ဍအသီးသီးမှ သုံးစွဲထားသောငွေ</p>
+      </div>
+    </section>
+
+    <!-- Allocated Buckets Grid -->
+    <section>
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+        <h2 class="text-base sm:text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+          <i data-lucide="pie-chart" class="w-5 h-5 text-emerald-600 dark:text-emerald-400"></i>
+          <span>ခွဲဝေထားသော ငွေကြေးကဏ္ဍများ (Buckets)</span>
+        </h2>
+        <span id="allocationRatioBadge" class="text-xs font-semibold px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800/60"></span>
+      </div>
+      <div id="bucketsContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+        <!-- Buckets rendered dynamically -->
+      </div>
+    </section>
+
+    <!-- Footer Credit -->
+    <footer class="pt-6 pb-2 border-t border-slate-200/80 dark:border-slate-800/80 text-center">
+      <p class="text-xs sm:text-sm font-medium tracking-wide text-slate-400 dark:text-slate-500">
+        Gemini <span class="mx-1.5 text-emerald-500">•</span> MG Nann
+      </p>
+    </footer>
+
+  </main>
+
+  <!-- ==================== 1. QUICK SPLIT CALCULATOR & ENTRY MODAL ==================== -->
+  <div id="entryModal" class="fixed inset-0 z-50 hidden bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4" onclick="handleBackdropClick(event, 'entryModal')">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-slate-100 dark:border-slate-800 animate-modal max-h-[92vh] overflow-y-auto">
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between pb-3.5 border-b border-slate-100 dark:border-slate-800 mb-4">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+            <i data-lucide="calculator" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-base text-slate-900 dark:text-white">အမြန်ခွဲဝေတွက်ချက် & စာရင်းသွင်းရန်</h3>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400">ငွေပမာဏရိုက်ထည့်၍ ခွဲဝေမှုကို ချက်ချင်းတွက်ချက်ပါ</p>
+          </div>
+        </div>
+        <button type="button" onclick="closeEntryModal()" class="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Mode Switcher Tabs -->
+      <div class="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl mb-5">
+        <button type="button" id="tabIncome" onclick="switchFormMode('income')" class="flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-lg bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm transition cursor-pointer">
+          <i data-lucide="plus-circle" class="w-4 h-4"></i>
+          <span>ဝင်ငွေ / ခွဲဝေတွက်စက်</span>
+        </button>
+        <button type="button" id="tabExpense" onclick="switchFormMode('expense')" class="flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer">
+          <i data-lucide="minus-circle" class="w-4 h-4"></i>
+          <span>အသုံးစရိတ်မှတ်ရန်</span>
+        </button>
+      </div>
+
+      <form id="transactionForm" onsubmit="handleTransactionSubmit(event)" class="space-y-4">
+        <!-- Amount Input -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">ငွေပမာဏ (ကျပ်)</label>
+          <div class="relative">
+            <input type="number" id="amountInput" required min="1" step="any" placeholder="ဥပမာ - 500000" oninput="updateLivePreview()"
+              class="w-full pl-4 pr-14 py-3 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-base font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white dark:focus:bg-slate-800 transition" />
+            <span class="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">MMK</span>
+          </div>
+        </div>
+
+        <!-- Income Allocation Target & Live Calculator Preview -->
+        <div id="incomeTargetGroup">
+          <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">ခွဲဝေမည့် ပုံစံ</label>
+          <select id="incomeTargetSelect" onchange="updateLivePreview()"
+            class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white dark:focus:bg-slate-800 transition">
+            <option value="auto">✨ ရာခိုင်နှုန်းအတိုင်း အလိုအလျောက်ခွဲဝေမည်</option>
+          </select>
+
+          <!-- Live Allocation Calculator Preview Box -->
+          <div id="liveAllocationPreview" class="mt-3 p-3.5 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200/70 dark:border-emerald-800/60">
+            <p class="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 mb-2 flex items-center justify-between">
+              <span class="flex items-center gap-1.5">
+                <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+                <span>ခွဲဝေရရှိမည့် ပမာဏ တွက်ချက်မှု-</span>
+              </span>
+              <span id="previewTotalHint" class="text-emerald-700 dark:text-emerald-400">0 ကျပ်</span>
+            </p>
+            <div id="previewItems" class="space-y-1.5 text-xs text-slate-700 dark:text-slate-300"></div>
+          </div>
+        </div>
+
+        <!-- Expense Bucket Target -->
+        <div id="expenseTargetGroup" class="hidden">
+          <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">မည်သည့် ကဏ္ဍမှ သုံးစွဲမည်နည်း?</label>
+          <select id="expenseBucketSelect"
+            class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:bg-white dark:focus:bg-slate-800 transition">
+          </select>
+        </div>
+
+        <!-- Description / Note -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">အကြောင်းအရာ / မှတ်ချက်</label>
+          <input type="text" id="noteInput" required placeholder="ဥပမာ - လစာဝင်ငွေ / အပိုဝင်ငွေ"
+            class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white dark:focus:bg-slate-800 transition" />
+        </div>
+
+        <!-- Date -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">ရက်စွဲ</label>
+          <input type="date" id="dateInput" required
+            class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white dark:focus:bg-slate-800 transition" />
+        </div>
+
+        <!-- Submit Button -->
+        <div class="pt-1 flex items-center gap-2.5">
+          <button type="button" onclick="closeEntryModal()"
+            class="px-4 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-sm transition cursor-pointer">
+            ပိတ်မည်
+          </button>
+          <button type="submit" id="submitBtn"
+            class="flex-1 py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2 transition cursor-pointer">
+            <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+            <span>ဝင်ငွေမှတ်တမ်းတင်ပြီး ခွဲဝေမည်</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== 2. TRANSACTION HISTORY MODAL ==================== -->
+  <div id="historyModal" class="fixed inset-0 z-50 hidden bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4" onclick="handleBackdropClick(event, 'historyModal')">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl border border-slate-100 dark:border-slate-800 animate-modal flex flex-col max-h-[88vh]">
+      <!-- Modal Header -->
+      <div class="flex flex-wrap items-center justify-between gap-3 pb-3.5 border-b border-slate-100 dark:border-slate-800">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 flex items-center justify-center">
+            <i data-lucide="history" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-base text-slate-900 dark:text-white">ငွေစာရင်း မှတ်တမ်းများ</h3>
+            <p id="historyModalSubtitle" class="text-[11px] text-slate-500 dark:text-slate-400">စုစုပေါင်း မှတ်တမ်း 0 ခု</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="exportToCSV()"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/70 dark:hover:bg-emerald-900/70 border border-emerald-200 dark:border-emerald-800 rounded-xl transition cursor-pointer">
+            <i data-lucide="download" class="w-3.5 h-3.5"></i>
+            <span>CSV ထုတ်ယူရန်</span>
+          </button>
+          <button type="button" onclick="closeHistoryModal()" class="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Filter Pills & Search -->
+      <div class="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-slate-100 dark:border-slate-800">
+        <div class="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl self-start">
+          <button type="button" onclick="setFilter('all')" id="filter-all" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white dark:bg-slate-900 text-slate-800 dark:text-white shadow-sm transition cursor-pointer">အားလုံး</button>
+          <button type="button" onclick="setFilter('income')" id="filter-income" class="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer">ဝင်ငွေ</button>
+          <button type="button" onclick="setFilter('expense')" id="filter-expense" class="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer">အသုံးစရိတ်</button>
+        </div>
+
+        <div class="relative flex-1 sm:max-w-xs">
+          <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+          <input type="text" id="historySearchInput" oninput="renderTransactions()" placeholder="မှတ်ချက်ဖြင့် ရှာဖွေရန်..."
+            class="w-full pl-8 pr-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+        </div>
+      </div>
+
+      <!-- Scrollable Transaction List -->
+      <div id="transactionList" class="py-3 space-y-2.5 overflow-y-auto flex-1 pr-1">
+        <!-- Transactions rendered dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 3. SETTINGS MODAL: CUSTOMIZE ALLOCATION BUCKETS ==================== -->
+  <div id="settingsModal" class="fixed inset-0 z-50 hidden bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4" onclick="handleBackdropClick(event, 'settingsModal')">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-slate-100 dark:border-slate-800 animate-modal">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+            <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
+          </div>
+          <h3 class="font-bold text-base text-slate-900 dark:text-white">ငွေခွဲဝေမှု ရာခိုင်နှုန်းများ ချိန်ညှိရန်</h3>
+        </div>
+        <button type="button" onclick="closeSettingsModal()" class="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="py-4 space-y-3 max-h-[55vh] overflow-y-auto" id="settingsBucketsList">
+        <!-- Editable buckets rendered here -->
+      </div>
+
+      <!-- Add New Bucket Button -->
+      <button type="button" onclick="addNewBucketRow()" class="w-full py-2 border border-dashed border-slate-300 dark:border-slate-700 hover:border-emerald-500 text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer mb-4">
+        <i data-lucide="plus" class="w-4 h-4"></i>
+        <span>ကဏ္ဍအသစ် ထပ်တိုးရန်</span>
+      </button>
+
+      <!-- Total Percentage Indicator -->
+      <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 mb-4">
+        <span class="text-xs font-semibold text-slate-700 dark:text-slate-300">စုစုပေါင်း ရာခိုင်နှုန်း (၁၀၀% ဖြစ်ရမည်)</span>
+        <span id="settingsTotalPercent" class="text-sm font-bold text-emerald-600 dark:text-emerald-400">100%</span>
+      </div>
+
+      <div class="flex items-center justify-between gap-3">
+        <button type="button" onclick="openResetConfirmModal()" class="px-3 py-2 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-xl transition cursor-pointer">
+          စာရင်းအားလုံး ဖျက်မည်
+        </button>
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="closeSettingsModal()" class="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer">
+            မလုပ်တော့ပါ
+          </button>
+          <button type="button" onclick="saveSettings()" id="saveSettingsBtn" class="px-4 py-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-sm transition cursor-pointer">
+            သိမ်းဆည်းမည်
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 4. CUSTOM RESET CONFIRMATION MODAL ==================== -->
+  <div id="resetConfirmModal" class="fixed inset-0 z-[60] hidden bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 dark:border-slate-800 text-center animate-modal">
+      <div class="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto mb-3.5">
+        <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+      </div>
+      <h4 class="font-bold text-base text-slate-900 dark:text-white mb-1.5">စာရင်းအားလုံးကို ဖျက်ပစ်မည်လား?</h4>
+      <p class="text-xs text-slate-500 dark:text-slate-400 mb-5">မှတ်တမ်းတင်ထားသော ဝင်ငွေနှင့် အသုံးစရိတ်စာရင်းများ အားလုံး ပျက်သွားပါမည်။</p>
+      <div class="flex items-center gap-2.5">
+        <button type="button" onclick="closeResetConfirmModal()" class="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold transition cursor-pointer">
+          မဖျက်တော့ပါ
+        </button>
+        <button type="button" onclick="executeResetAllData()" class="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold transition cursor-pointer">
+          အားလုံးဖျက်မည်
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-5 left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 sm:right-5 z-[70] transform translate-y-24 opacity-0 transition-all duration-300 pointer-events-none">
+    <div class="bg-slate-900 dark:bg-slate-800 text-white border border-slate-700 px-4 py-3 rounded-xl shadow-xl flex items-center gap-2.5 text-xs sm:text-sm font-medium whitespace-nowrap">
+      <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400 shrink-0"></i>
+      <span id="toastMessage">မှတ်တမ်းတင်ပြီးပါပြီ</span>
+    </div>
+  </div>
+
+  <script>
+    // Default Buckets Configuration (50/30/20 Rule)
+    const DEFAULT_BUCKETS = [
+      { id: 'needs', name: 'မရှိမဖြစ် အသုံးစရိတ်', percentage: 50, color: 'blue', icon: 'home' },
+      { id: 'wants', name: 'ကိုယ်ပိုင်အသုံးစရိတ်', percentage: 30, color: 'amber', icon: 'shopping-bag' },
+      { id: 'savings', name: 'စုဆောင်းငွေနှင့် ရင်းနှီးမြှုပ်နှံမှု', percentage: 20, color: 'emerald', icon: 'piggy-bank' }
+    ];
+
+    const COLOR_STYLES = {
+      blue: { bg: 'bg-blue-50 dark:bg-blue-950/60', text: 'text-blue-600 dark:text-blue-400', bar: 'bg-blue-500' },
+      amber: { bg: 'bg-amber-50 dark:bg-amber-950/60', text: 'text-amber-600 dark:text-amber-400', bar: 'bg-amber-500' },
+      emerald: { bg: 'bg-emerald-50 dark:bg-emerald-950/60', text: 'text-emerald-600 dark:text-emerald-400', bar: 'bg-emerald-500' },
+      purple: { bg: 'bg-purple-50 dark:bg-purple-950/60', text: 'text-purple-600 dark:text-purple-400', bar: 'bg-purple-500' },
+      rose: { bg: 'bg-rose-50 dark:bg-rose-950/60', text: 'text-rose-600 dark:text-rose-400', bar: 'bg-rose-500' },
+      cyan: { bg: 'bg-cyan-50 dark:bg-cyan-950/60', text: 'text-cyan-600 dark:text-cyan-400', bar: 'bg-cyan-500' }
+    };
+
+    const AVAILABLE_COLORS = ['blue', 'amber', 'emerald', 'purple', 'rose', 'cyan'];
+    const AVAILABLE_ICONS = ['home', 'shopping-bag', 'piggy-bank', 'heart-handshake', 'graduation-cap', 'shield-check', 'briefcase', 'gift'];
+
+    // State Management
+    let buckets = JSON.parse(localStorage.getItem('mm_budget_buckets')) || JSON.parse(JSON.stringify(DEFAULT_BUCKETS));
+    let transactions = JSON.parse(localStorage.getItem('mm_budget_transactions')) || [];
+    let currentFormMode = 'income';
+    let currentFilter = 'all';
+    let tempSettingsBuckets = [];
+
+    // Initialize App
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('dateInput').valueAsDate = new Date();
+      renderAll();
+    });
+
+    // Dark / Light Mode Toggle
+    function toggleTheme() {
+      const htmlEl = document.documentElement;
+      const isDark = htmlEl.classList.toggle('dark');
+      localStorage.setItem('mm_budget_theme', isDark ? 'dark' : 'light');
+      lucide.createIcons();
+    }
+
+    // Close modal when clicking outside content box
+    function handleBackdropClick(event, modalId) {
+      if (event.target.id === modalId) {
+        document.getElementById(modalId).classList.add('hidden');
+      }
+    }
+
+    // Modal Open/Close Helpers
+    function openEntryModal(mode = 'income') {
+      populateSelectOptions();
+      switchFormMode(mode);
+      updateLivePreview();
+      document.getElementById('entryModal').classList.remove('hidden');
+      lucide.createIcons();
+      setTimeout(() => document.getElementById('amountInput').focus(), 100);
+    }
+
+    function closeEntryModal() {
+      document.getElementById('entryModal').classList.add('hidden');
+    }
+
+    function openHistoryModal() {
+      renderTransactions();
+      document.getElementById('historyModal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeHistoryModal() {
+      document.getElementById('historyModal').classList.add('hidden');
+    }
+
+    function saveData() {
+      localStorage.setItem('mm_budget_buckets', JSON.stringify(buckets));
+      localStorage.setItem('mm_budget_transactions', JSON.stringify(transactions));
+    }
+
+    function formatMMK(amount) {
+      return Number(amount || 0).toLocaleString('en-US', { maximumFractionDigits: 0 }) + ' ကျပ်';
+    }
+
+    // Calculate Balances per Bucket
+    function calculateStats() {
+      let totalIncome = 0;
+      let totalExpense = 0;
+      const bucketStats = {};
+
+      buckets.forEach(b => {
+        bucketStats[b.id] = { allocated: 0, spent: 0, balance: 0 };
+      });
+
+      transactions.forEach(tx => {
+        if (tx.type === 'income') {
+          totalIncome += tx.amount;
+          if (tx.allocations) {
+            Object.entries(tx.allocations).forEach(([bId, amt]) => {
+              if (!bucketStats[bId]) {
+                bucketStats[bId] = { allocated: 0, spent: 0, balance: 0 };
+              }
+              bucketStats[bId].allocated += amt;
+              bucketStats[bId].balance += amt;
+            });
+          }
+        } else if (tx.type === 'expense') {
+          totalExpense += tx.amount;
+          if (!bucketStats[tx.bucketId]) {
+            bucketStats[tx.bucketId] = { allocated: 0, spent: 0, balance: 0 };
+          }
+          bucketStats[tx.bucketId].spent += tx.amount;
+          bucketStats[tx.bucketId].balance -= tx.amount;
+        }
+      });
+
+      return {
+        totalIncome,
+        totalExpense,
+        totalBalance: totalIncome - totalExpense,
+        bucketStats
+      };
+    }
+
+    function renderAll() {
+      const stats = calculateStats();
+      renderOverview(stats);
+      renderBuckets(stats);
+      populateSelectOptions();
+      updateHistoryCounters();
+      renderTransactions();
+      lucide.createIcons();
+    }
+
+    function updateHistoryCounters() {
+      const count = transactions.length;
+      document.getElementById('historyBadgeCount').textContent = count;
+      document.getElementById('historyModalSubtitle').textContent = `စုစုပေါင်း မှတ်တမ်း ${count} ခု`;
+    }
+
+    function renderOverview(stats) {
+      document.getElementById('totalBalanceDisplay').textContent = formatMMK(stats.totalBalance);
+      document.getElementById('totalIncomeDisplay').textContent = formatMMK(stats.totalIncome);
+      document.getElementById('totalExpenseDisplay').textContent = formatMMK(stats.totalExpense);
+
+      const ratioText = buckets.map(b => `${b.percentage}%`).join(' / ');
+      document.getElementById('allocationRatioBadge').textContent = `ခွဲဝေမှုအချိုး: ${ratioText}`;
+    }
+
+    function renderBuckets(stats) {
+      const container = document.getElementById('bucketsContainer');
+      container.innerHTML = '';
+
+      buckets.forEach(bucket => {
+        const bStat = stats.bucketStats[bucket.id] || { allocated: 0, spent: 0, balance: 0 };
+        const style = COLOR_STYLES[bucket.color] || COLOR_STYLES.emerald;
+        const spentPercent = bStat.allocated > 0 ? Math.min(100, Math.round((bStat.spent / bStat.allocated) * 100)) : 0;
+        const isNegative = bStat.balance < 0;
+
+        const card = document.createElement('div');
+        card.className = 'glass-card rounded-2xl p-5 bg-white/95 dark:bg-slate-900/95 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-md transition flex flex-col justify-between';
+        card.innerHTML = `
+          <div>
+            <div class="flex items-start justify-between gap-3 mb-3">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl ${style.bg} ${style.text} flex items-center justify-center shrink-0">
+                  <i data-lucide="${bucket.icon || 'wallet'}" class="w-5 h-5"></i>
+                </div>
+                <div>
+                  <h3 class="font-bold text-sm text-slate-900 dark:text-white line-clamp-1">${bucket.name}</h3>
+                  <span class="inline-block text-[11px] font-semibold px-2 py-0.5 rounded-md ${style.bg} ${style.text} mt-0.5">
+                    သတ်မှတ်ချက် ${bucket.percentage}%
+                  </span>
+                </div>
+              </div>
+              <button type="button" onclick="quickSpendFromBucket('${bucket.id}')"
+                class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition cursor-pointer"
+                title="ဤကဏ္ဍမှ အသုံးစရိတ်ထည့်ရန်">
+                <i data-lucide="minus-circle" class="w-4 h-4"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="mt-3">
+            <div class="flex items-baseline justify-between mb-1">
+              <span class="text-xs text-slate-500 dark:text-slate-400">လက်ကျန်ငွေ</span>
+              <span class="text-lg font-bold ${isNegative ? 'text-rose-600 dark:text-rose-400' : 'text-slate-900 dark:text-white'}">
+                ${formatMMK(bStat.balance)}
+              </span>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden my-2">
+              <div class="h-full ${isNegative ? 'bg-rose-500' : style.bar} rounded-full transition-all duration-500" style="width: ${spentPercent}%"></div>
+            </div>
+
+            <div class="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 pt-1">
+              <span>ရရှိငွေ: <strong class="text-slate-700 dark:text-slate-200">${formatMMK(bStat.allocated)}</strong></span>
+              <span>သုံးစွဲပြီး: <strong class="text-slate-700 dark:text-slate-200">${formatMMK(bStat.spent)}</strong></span>
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function quickSpendFromBucket(bucketId) {
+      openEntryModal('expense');
+      document.getElementById('expenseBucketSelect').value = bucketId;
+    }
+
+    function populateSelectOptions() {
+      const incomeSelect = document.getElementById('incomeTargetSelect');
+      const expenseSelect = document.getElementById('expenseBucketSelect');
+
+      const currentIncomeVal = incomeSelect.value;
+      const currentExpenseVal = expenseSelect.value;
+
+      incomeSelect.innerHTML = `<option value="auto">✨ ရာခိုင်နှုန်းအတိုင်း အလိုအလျောက်ခွဲဝေမည်</option>`;
+      expenseSelect.innerHTML = '';
+
+      buckets.forEach(b => {
+        const opt1 = document.createElement('option');
+        opt1.value = b.id;
+        opt1.textContent = `📥 "${b.name}" ထဲသို့ တိုက်ရိုက်ထည့်မည်`;
+        incomeSelect.appendChild(opt1);
+
+        const opt2 = document.createElement('option');
+        opt2.value = b.id;
+        opt2.textContent = `${b.name} (${b.percentage}%)`;
+        expenseSelect.appendChild(opt2);
+      });
+
+      if ([...incomeSelect.options].some(o => o.value === currentIncomeVal)) {
+        incomeSelect.value = currentIncomeVal;
+      }
+      if ([...expenseSelect.options].some(o => o.value === currentExpenseVal)) {
+        expenseSelect.value = currentExpenseVal;
+      }
+    }
+
+    function switchFormMode(mode) {
+      currentFormMode = mode;
+      const tabIncome = document.getElementById('tabIncome');
+      const tabExpense = document.getElementById('tabExpense');
+      const incomeTargetGroup = document.getElementById('incomeTargetGroup');
+      const expenseTargetGroup = document.getElementById('expenseTargetGroup');
+      const submitBtn = document.getElementById('submitBtn');
+      const noteInput = document.getElementById('noteInput');
+
+      if (mode === 'income') {
+        tabIncome.className = 'flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-lg bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm transition cursor-pointer';
+        tabExpense.className = 'flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer';
+        incomeTargetGroup.classList.remove('hidden');
+        expenseTargetGroup.classList.add('hidden');
+        submitBtn.className = 'flex-1 py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2 transition cursor-pointer';
+        submitBtn.innerHTML = `<i data-lucide="check-circle-2" class="w-4 h-4"></i><span>ဝင်ငွေမှတ်တမ်းတင်ပြီး ခွဲဝေမည်</span>`;
+        noteInput.placeholder = 'ဥပမာ - လစာဝင်ငွေ / အပိုဝင်ငွေ';
+        updateLivePreview();
+      } else {
+        tabExpense.className = 'flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-lg bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 shadow-sm transition cursor-pointer';
+        tabIncome.className = 'flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer';
+        incomeTargetGroup.classList.add('hidden');
+        expenseTargetGroup.classList.remove('hidden');
+        submitBtn.className = 'flex-1 py-3 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold text-sm shadow-md shadow-rose-600/20 flex items-center justify-center gap-2 transition cursor-pointer';
+        submitBtn.innerHTML = `<i data-lucide="receipt" class="w-4 h-4"></i><span>အသုံးစရိတ် မှတ်တမ်းတင်မည်</span>`;
+        noteInput.placeholder = 'ဥပမာ - နေ့လယ်စာ / ဖုန်းဘေလ် / အိမ်လခ';
+      }
+      lucide.createIcons();
+    }
+
+    function updateLivePreview() {
+      const previewBox = document.getElementById('liveAllocationPreview');
+      const previewItems = document.getElementById('previewItems');
+      const previewTotalHint = document.getElementById('previewTotalHint');
+      const rawVal = parseFloat(document.getElementById('amountInput').value);
+      const amount = rawVal > 0 ? rawVal : 0;
+      const target = document.getElementById('incomeTargetSelect').value;
+
+      if (currentFormMode !== 'income' || target !== 'auto') {
+        previewBox.classList.add('hidden');
+        return;
+      }
+
+      previewBox.classList.remove('hidden');
+      previewTotalHint.textContent = formatMMK(amount);
+      previewItems.innerHTML = '';
+
+      let allocatedSum = 0;
+      buckets.forEach((b, idx) => {
+        let share = Math.round((amount * b.percentage) / 100);
+        if (idx === buckets.length - 1 && amount > 0) {
+          share = amount - allocatedSum;
+        } else {
+          allocatedSum += share;
+        }
+
+        const row = document.createElement('div');
+        row.className = 'flex items-center justify-between py-0.5 border-b border-emerald-200/40 dark:border-emerald-800/40 last:border-0';
+        row.innerHTML = `
+          <span class="text-slate-600 dark:text-slate-300">${b.name} (${b.percentage}%)</span>
+          <span class="font-bold text-emerald-700 dark:text-emerald-400">+ ${formatMMK(share)}</span>
+        `;
+        previewItems.appendChild(row);
+      });
+    }
+
+    function handleTransactionSubmit(e) {
+      e.preventDefault();
+      const amount = parseFloat(document.getElementById('amountInput').value);
+      const note = document.getElementById('noteInput').value.trim();
+      const date = document.getElementById('dateInput').value;
+
+      if (!amount || amount <= 0 || !note || !date) return;
+
+      if (currentFormMode === 'income') {
+        const target = document.getElementById('incomeTargetSelect').value;
+        const allocations = {};
+
+        if (target === 'auto') {
+          let allocatedSum = 0;
+          buckets.forEach((b, idx) => {
+            let share = Math.round((amount * b.percentage) / 100);
+            if (idx === buckets.length - 1) {
+              share = amount - allocatedSum;
+            } else {
+              allocatedSum += share;
+            }
+            allocations[b.id] = share;
+          });
+        } else {
+          allocations[target] = amount;
+        }
+
+        transactions.unshift({
+          id: 'tx_' + Date.now(),
+          type: 'income',
+          amount,
+          note,
+          date,
+          target,
+          allocations
+        });
+
+        showToast('ဝင်ငွေမှတ်တမ်းတင်ပြီး ခွဲဝေပေးပြီးပါပြီ');
+      } else {
+        const bucketId = document.getElementById('expenseBucketSelect').value;
+        transactions.unshift({
+          id: 'tx_' + Date.now(),
+          type: 'expense',
+          amount,
+          note,
+          date,
+          bucketId
+        });
+
+        showToast('အသုံးစရိတ် မှတ်တမ်းတင်ပြီးပါပြီ');
+      }
+
+      saveData();
+      document.getElementById('amountInput').value = '';
+      document.getElementById('noteInput').value = '';
+      closeEntryModal();
+      renderAll();
+    }
+
+    function deleteTransaction(id) {
+      transactions = transactions.filter(tx => tx.id !== id);
+      saveData();
+      renderAll();
+      showToast('မှတ်တမ်းကို ဖျက်လိုက်ပါပြီ');
+    }
+
+    function setFilter(filter) {
+      currentFilter = filter;
+      ['all', 'income', 'expense'].forEach(f => {
+        const btn = document.getElementById(`filter-${f}`);
+        if (f === filter) {
+          btn.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg bg-white dark:bg-slate-900 text-slate-800 dark:text-white shadow-sm transition cursor-pointer';
+        } else {
+          btn.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer';
+        }
+      });
+      renderTransactions();
+      lucide.createIcons();
+    }
+
+    function renderTransactions() {
+      const list = document.getElementById('transactionList');
+      const searchEl = document.getElementById('historySearchInput');
+      const query = searchEl ? searchEl.value.toLowerCase().trim() : '';
+      list.innerHTML = '';
+
+      const filtered = transactions.filter(tx => {
+        const matchesType = currentFilter === 'all' || tx.type === currentFilter;
+        const matchesSearch = !query || tx.note.toLowerCase().includes(query);
+        return matchesType && matchesSearch;
+      });
+
+      if (filtered.length === 0) {
+        list.innerHTML = `
+          <div class="text-center py-12 px-4">
+            <div class="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto mb-3">
+              <i data-lucide="file-text" class="w-6 h-6"></i>
+            </div>
+            <p class="text-sm font-semibold text-slate-700 dark:text-slate-200">မှတ်တမ်းများ မရှိသေးပါ</p>
+            <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">အပေါ်ရှိ "+ စာရင်းသွင်း & တွက်ချက်" ခလုတ်ကို နှိပ်၍ စတင်ထည့်သွင်းပါ</p>
+          </div>
+        `;
+        lucide.createIcons();
+        return;
+      }
+
+      filtered.forEach(tx => {
+        const isIncome = tx.type === 'income';
+        let subtitle = '';
+
+        if (isIncome) {
+          if (tx.target === 'auto') {
+            subtitle = 'အလိုအလျောက် ရာခိုင်နှုန်းခွဲဝေမှု';
+          } else {
+            const b = buckets.find(item => item.id === tx.target);
+            subtitle = b ? `တိုက်ရိုက်ထည့်သွင်း: ${b.name}` : 'တိုက်ရိုက်ထည့်သွင်းငွေ';
+          }
+        } else {
+          const b = buckets.find(item => item.id === tx.bucketId);
+          subtitle = b ? `ကဏ္ဍ: ${b.name}` : 'အသုံးစရိတ်';
+        }
+
+        const item = document.createElement('div');
+        item.className = 'flex items-center justify-between gap-3 p-3.5 rounded-xl bg-slate-50/90 dark:bg-slate-800/70 hover:bg-slate-100/90 dark:hover:bg-slate-800 border border-slate-200/70 dark:border-slate-700/70 transition group';
+        item.innerHTML = `
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-10 h-10 rounded-xl ${isIncome ? 'bg-emerald-100/80 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400' : 'bg-rose-100/80 dark:bg-rose-950 text-rose-600 dark:text-rose-400'} flex items-center justify-center shrink-0">
+              <i data-lucide="${isIncome ? 'arrow-down-left' : 'arrow-up-right'}" class="w-5 h-5"></i>
+            </div>
+            <div class="min-w-0">
+              <p class="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">${tx.note}</p>
+              <div class="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                <span>${tx.date}</span>
+                <span>•</span>
+                <span class="truncate">${subtitle}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2.5 shrink-0">
+            <span class="text-sm font-bold ${isIncome ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}">
+              ${isIncome ? '+' : '-'} ${formatMMK(tx.amount)}
+            </span>
+            <button type="button" onclick="deleteTransaction('${tx.id}')" class="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/60 rounded-lg opacity-80 group-hover:opacity-100 transition cursor-pointer" title="ဖျက်ရန်">
+              <i data-lucide="trash-2" class="w-4 h-4"></i>
+            </button>
+          </div>
+        `;
+        list.appendChild(item);
+      });
+      lucide.createIcons();
+    }
+
+    // Settings Modal Logic
+    function openSettingsModal() {
+      tempSettingsBuckets = JSON.parse(JSON.stringify(buckets));
+      renderSettingsRows();
+      document.getElementById('settingsModal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeSettingsModal() {
+      document.getElementById('settingsModal').classList.add('hidden');
+    }
+
+    function renderSettingsRows() {
+      const container = document.getElementById('settingsBucketsList');
+      container.innerHTML = '';
+
+      tempSettingsBuckets.forEach((b, index) => {
+        const row = document.createElement('div');
+        row.className = 'flex items-center gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700';
+        row.innerHTML = `
+          <input type="text" value="${b.name}" onchange="updateTempBucket(${index}, 'name', this.value)" placeholder="ကဏ္ဍအမည်"
+            class="flex-1 min-w-0 px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+          <div class="relative w-24 shrink-0">
+            <input type="number" min="0" max="100" value="${b.percentage}" oninput="updateTempBucket(${index}, 'percentage', this.value)"
+              class="w-full pl-2.5 pr-6 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-900 dark:text-white text-right focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+            <span class="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate-400">%</span>
+          </div>
+          ${tempSettingsBuckets.length > 1 ? `
+            <button type="button" onclick="removeTempBucket(${index})" class="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg cursor-pointer">
+              <i data-lucide="trash-2" class="w-4 h-4"></i>
+            </button>
+          ` : ''}
+        `;
+        container.appendChild(row);
+      });
+
+      updateSettingsTotal();
+      lucide.createIcons();
+    }
+
+    function updateTempBucket(index, field, value) {
+      if (field === 'percentage') {
+        tempSettingsBuckets[index].percentage = parseFloat(value) || 0;
+        updateSettingsTotal();
+      } else {
+        tempSettingsBuckets[index][field] = value.trim();
+      }
+    }
+
+    function addNewBucketRow() {
+      const nextColor = AVAILABLE_COLORS[tempSettingsBuckets.length % AVAILABLE_COLORS.length];
+      const nextIcon = AVAILABLE_ICONS[tempSettingsBuckets.length % AVAILABLE_ICONS.length];
+      tempSettingsBuckets.push({
+        id: 'bucket_' + Date.now(),
+        name: 'ကဏ္ဍအသစ်',
+        percentage: 0,
+        color: nextColor,
+        icon: nextIcon
+      });
+      renderSettingsRows();
+    }
+
+    function removeTempBucket(index) {
+      tempSettingsBuckets.splice(index, 1);
+      renderSettingsRows();
+    }
+
+    function updateSettingsTotal() {
+      const total = tempSettingsBuckets.reduce((sum, b) => sum + (parseFloat(b.percentage) || 0), 0);
+      const totalEl = document.getElementById('settingsTotalPercent');
+      const saveBtn = document.getElementById('saveSettingsBtn');
+
+      totalEl.textContent = `${total}%`;
+      if (Math.abs(total - 100) < 0.01) {
+        totalEl.className = 'text-sm font-bold text-emerald-600 dark:text-emerald-400';
+        saveBtn.disabled = false;
+        saveBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+      } else {
+        totalEl.className = 'text-sm font-bold text-rose-600 dark:text-rose-400';
+        saveBtn.disabled = true;
+        saveBtn.classList.add('opacity-50', 'cursor-not-allowed');
+      }
+    }
+
+    function saveSettings() {
+      const total = tempSettingsBuckets.reduce((sum, b) => sum + (parseFloat(b.percentage) || 0), 0);
+      if (Math.abs(total - 100) >= 0.01) return;
+
+      buckets = tempSettingsBuckets.map(b => ({
+        ...b,
+        name: b.name || 'အမည်မသိကဏ္ဍ'
+      }));
+      saveData();
+      closeSettingsModal();
+      renderAll();
+      showToast('ရာခိုင်နှုန်း သတ်မှတ်ချက်များကို သိမ်းဆည်းပြီးပါပြီ');
+    }
+
+    // Custom Confirmation Modal for Resetting All Data
+    function openResetConfirmModal() {
+      document.getElementById('resetConfirmModal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeResetConfirmModal() {
+      document.getElementById('resetConfirmModal').classList.add('hidden');
+    }
+
+    function executeResetAllData() {
+      localStorage.removeItem('mm_budget_buckets');
+      localStorage.removeItem('mm_budget_transactions');
+      buckets = JSON.parse(JSON.stringify(DEFAULT_BUCKETS));
+      transactions = [];
+      closeResetConfirmModal();
+      closeSettingsModal();
+      renderAll();
+      showToast('စာရင်းအားလုံးကို ပြန်လည်ရှင်းလင်းပြီးပါပြီ');
+    }
+
+    // Export CSV
+    function exportToCSV() {
+      if (transactions.length === 0) {
+        showToast('ထုတ်ယူရန် မှတ်တမ်းမရှိသေးပါ');
+        return;
+      }
+
+      const headers = ['Date', 'Type', 'Note', 'Amount (MMK)', 'Bucket / Details'];
+      const rows = transactions.map(tx => {
+        const typeLabel = tx.type === 'income' ? 'Income' : 'Expense';
+        let detail = '';
+        if (tx.type === 'income') {
+          detail = tx.target === 'auto' ? 'Auto Allocated' : (buckets.find(b => b.id === tx.target)?.name || '');
+        } else {
+          detail = buckets.find(b => b.id === tx.bucketId)?.name || '';
+        }
+        return [tx.date, typeLabel, `"${tx.note.replace(/"/g, '""')}"`, tx.amount, `"${detail}"`].join(',');
+      });
+
+      const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `budget_records_${new Date().toISOString().slice(0, 10)}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+      showToast('CSV ဖိုင်အဖြစ် ဒေါင်းလုဒ်ဆွဲပြီးပါပြီ');
+    }
+
+    // Toast Helper
+    let toastTimeout;
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toastMessage').textContent = message;
+      toast.classList.remove('translate-y-24', 'opacity-0');
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        toast.classList.add('translate-y-24', 'opacity-0');
+      }, 3000);
+    }
+  </script>
+</body>
+</html>
